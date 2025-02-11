@@ -1,9 +1,9 @@
-import { getCurrentUser, logout } from '@/app/service/auth'
+import { getCurrentAuthUser, logout } from '@/app/service/auth'
 import Link from 'next/link'
 import { PageLayout } from '../PageLayout'
 
 export const Header = async () => {
-  const currentUser = await getCurrentUser()
+  const currentUser = await getCurrentAuthUser()
 
   return (
     <header className="bg-variant h-16 w-full">

@@ -1,5 +1,6 @@
 import { createClient } from '@/app/utils/supabase/server'
 import { NextResponse } from 'next/server'
+import { v4 as uuidv4 } from 'uuid';
 // The client you created from the Server-Side Auth instructions
 
 export async function GET(request: Request) {
@@ -10,7 +11,11 @@ export async function GET(request: Request) {
 
   if (code) {
     const supabase = await createClient()
-    const { error } = await supabase.auth.exchangeCodeForSession(code)
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code)
+    if (data.user?.id) {
+        const uuid = uuidv4()
+        await supabase.from('User').insert({id: uuid, authId: data.user.id, name: 'player name'})
+    }
     if (!error) {
       const forwardedHost = request.headers.get('x-forwarded-host') // original origin before load balancer
       const isLocalEnv = process.env.NODE_ENV === 'development'
