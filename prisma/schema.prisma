@@ -1,0 +1,72 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id     String @id @default(dbgenerated("uuid_generate_v4()"))
+  authId String @unique
+  name   String
+}
+
+model Character {
+  id     Int     @id @default(autoincrement())
+  name   String
+  skills Skill[]
+}
+
+model Skill {
+  id                           String             @id
+  name                         String
+  occurrenceFrame              String?
+  continuationFrame            String?
+  stiffeningFrame              String?
+  straightnessDifferenceHit    String?
+  straightnessDifferenceGuard  String?
+  damage                       String
+  comboCorrection              String?
+  dGaugeIncrease               String?
+  dGaugeDecreaseGuard          String?
+  dGaugeDecreasePanisseCounter String?
+  saGaugeIncrease              String?
+  attribute                    String?
+  remark                       String?
+  character                    Character          @relation(fields: [characterId], references: [id])
+  characterId                  Int
+  skillCategory                SkillCategory      @relation(fields: [skillCategoryId], references: [id])
+  skillCategoryId              Int
+  cancelCategory               String?
+  commands                     CommandsOnSkills[]
+}
+
+model SkillCategory {
+  id    Int     @id @default(autoincrement())
+  name  String
+  skill Skill[]
+}
+
+model Command {
+  id     String             @id
+  name   String
+  skills CommandsOnSkills[]
+}
+
+model CommandsOnSkills {
+  skill     Skill   @relation(fields: [skillId], references: [id])
+  skillId   String
+  command   Command @relation(fields: [commandId], references: [id])
+  commandId String
+  order     Int
+
+  @@id([skillId, commandId, order])
+}
