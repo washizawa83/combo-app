@@ -12,6 +12,13 @@ export const getCurrentAuthUser = async () => {
   return user
 }
 
+export const getUser = async (authId: string) => {
+  const prisma = new PrismaClient()
+  return await prisma.user.findFirst({
+    where: {authId: authId}
+  })
+}
+
 export const createUser = async () => {
     const prisma = new PrismaClient()
     const newUser = await prisma.user.create({

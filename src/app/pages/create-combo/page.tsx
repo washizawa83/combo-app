@@ -9,14 +9,25 @@ import { SkillCategoryDropDown } from '@/app/components/feature/create-combo/Ski
 import { Button } from '@/app/components/forms/Button'
 import { PageLayout } from '@/app/components/PageLayout'
 import { Title } from '@/app/components/ui/Title'
-import { getAllCharacters, getSkillsByCharacter } from '@/app/service/game'
-import { SkillCategories, SkillRelationType } from '@/types/db/db-schema'
+import { getCurrentAuthUser, getUser } from '@/app/service/auth'
+import {
+  createCombo,
+  createSkillsOnCombos,
+  getAllCharacters,
+  getSkillsByCharacter,
+} from '@/app/service/game'
+import {
+  CreateComboSchema,
+  SkillCategories,
+  SkillRelationType,
+} from '@/types/db/db-schema'
 import { CharacterNames } from '@/types/util/character'
 import { Character } from '@@/prisma/generated/zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useSearchParams } from 'next/navigation'
 import React, { startTransition, useEffect, useState } from 'react'
 import { FieldValues, useForm } from 'react-hook-form'
+import { v4 as uuidv4 } from 'uuid'
 import { z } from 'zod'
 
 type Difficulty = 'Easy' | 'Normal' | 'Hard' | 'Very Hard'
@@ -41,14 +52,19 @@ const groupBySkillCategory = (skills: SkillRelationType[]) => {
 }
 
 const schema = z.object({
+  comboName: z
+    .string()
+    .min(1, 'コンボ名は必須です')
+    .max(50, '50文字以内で入力してください'),
   damage: z
-    .number()
+    .number({ invalid_type_error: 'ダメージの入力は必須です' })
     .min(0, '1以上の数値を入力してください')
     .max(99999, '99999以下で数値を入力してください'),
   hits: z
-    .number()
+    .number({ invalid_type_error: 'ヒット数の入力は必須です' })
     .min(1, '1以上の数値を入力してください')
     .max(99, '99以下で数値を入力してください'),
+  remark: z.string().min(0).max(1000, '1000文字以内で入力してください'),
 })
 
 const CreateCombo = () => {
@@ -104,8 +120,25 @@ const CreateCombo = () => {
     setSelectedSkills(result)
   }
 
-  const onSubmit = (data: FieldValues) => {
-    console.log(data)
+  const onSubmit = async (data: FieldValues) => {
+    const authUser = await getCurrentAuthUser()
+    if (!selectedCharacter || !authUser) return
+    const user = await getUser(authUser.id)
+
+    const comboData: CreateComboSchema = {
+      id: uuidv4(),
+      name: data.comboName,
+      damage: data.damage,
+      hits: data.hits,
+      difficulty: difficulty,
+      consumptionDriveGauge: driveGauge,
+      characterId: selectedCharacter.id,
+      remark: data.remark,
+      userId: user.id,
+    }
+    console.log(comboData)
+    const createdCombo = await createCombo(comboData)
+    await createSkillsOnCombos(selectedSkills, createdCombo)
   }
 
   return (
@@ -114,7 +147,7 @@ const CreateCombo = () => {
         <div className="mb-8">
           <Title title="Character select" />
           <select
-            className="text-black text-2xl w-72 h-10 px-3"
+            className="text-black text-2xl w-72 h-10 pl-2"
             name="characters"
             id="characters"
             value={selectedCharacter?.name}
@@ -137,6 +170,22 @@ const CreateCombo = () => {
               </option>
             ))}
           </select>
+        </div>
+        <div className="mb-8">
+          <Title title="Combo Name" />
+          <div className="flex flex-col">
+            <input
+              type="text"
+              placeholder="画面端限定コンボ"
+              className="text-black text-2xl w-full h-10 pl-2"
+              {...register('comboName')}
+            />
+            {errors.comboName && (
+              <span className="text-accentRed">
+                {errors.comboName.message?.toString()}
+              </span>
+            )}
+          </div>
         </div>
         <div className="mb-8">
           <Title title="Combo Skills" />
@@ -179,8 +228,8 @@ const CreateCombo = () => {
           <div className="flex flex-col">
             <input
               type="number"
-              defaultValue={1}
-              className="text-black text-2xl w-72 h-10 px-3"
+              placeholder="5000"
+              className="text-black text-2xl w-72 h-10 pl-2"
               {...register('damage', { valueAsNumber: true })}
             />
             {errors.damage && (
@@ -195,8 +244,8 @@ const CreateCombo = () => {
           <div className="flex flex-col">
             <input
               type="number"
-              defaultValue={1}
-              className="text-black text-2xl w-72 h-10 px-3"
+              placeholder="10"
+              className="text-black text-2xl w-72 h-10 pl-2"
               {...register('hits', { valueAsNumber: true })}
             />
             {errors.hits && (
@@ -227,6 +276,21 @@ const CreateCombo = () => {
             editable={true}
             handleSelectGauge={setDriveGauge}
           />
+        </div>
+        <div className="mb-8">
+          <Title title="Remark" />
+          <div className="flex flex-col">
+            <textarea
+              rows={5}
+              className="text-black text-2xl w-full p-2"
+              {...register('remark')}
+            />
+            {errors.remark && (
+              <span className="text-accentRed">
+                {errors.remark.message?.toString()}
+              </span>
+            )}
+          </div>
         </div>
         <div className="flex items-center justify-center my-16">
           <Button label="Create" type="submit" handleClick={() => {}} />
