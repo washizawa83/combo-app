@@ -1,0 +1,239 @@
+'use client'
+
+import {
+  DriveGauge,
+  GaugeLevel,
+} from '@/app/components/feature/create-combo/DriveGauge'
+import { SelectedSkillItem } from '@/app/components/feature/create-combo/SelectedSkillItem'
+import { SkillCategoryDropDown } from '@/app/components/feature/create-combo/SkillCategoryDropDown'
+import { Button } from '@/app/components/forms/Button'
+import { PageLayout } from '@/app/components/PageLayout'
+import { Title } from '@/app/components/ui/Title'
+import { getAllCharacters, getSkillsByCharacter } from '@/app/service/game'
+import { SkillCategories, SkillRelationType } from '@/types/db/db-schema'
+import { CharacterNames } from '@/types/util/character'
+import { Character } from '@@/prisma/generated/zod'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { useSearchParams } from 'next/navigation'
+import React, { startTransition, useEffect, useState } from 'react'
+import { FieldValues, useForm } from 'react-hook-form'
+import { z } from 'zod'
+
+type Difficulty = 'Easy' | 'Normal' | 'Hard' | 'Very Hard'
+
+const maxSkillLength = 50
+
+const getSelectedCharacter = (
+  selectedCharacterName: CharacterNames,
+  characters?: Character[] | null,
+) => {
+  if (!characters) return null
+  return characters.filter(
+    (character) => character.name === selectedCharacterName,
+  )[0]
+}
+
+const groupBySkillCategory = (skills: SkillRelationType[]) => {
+  return Map.groupBy<SkillCategories, SkillRelationType>(
+    skills,
+    (skill) => skill.skillCategory.name as SkillCategories,
+  )
+}
+
+const schema = z.object({
+  damage: z
+    .number()
+    .min(0, '1以上の数値を入力してください')
+    .max(99999, '99999以下で数値を入力してください'),
+  hits: z
+    .number()
+    .min(1, '1以上の数値を入力してください')
+    .max(99, '99以下で数値を入力してください'),
+})
+
+const CreateCombo = () => {
+  const query = useSearchParams()
+  const characterName = query.get('characterName') as CharacterNames
+  const ref = React.createRef<HTMLDivElement>()
+
+  const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(
+    null,
+  )
+  const [characters, setCharacters] = useState<Character[] | null>()
+  const [skills, setSkills] = useState<SkillRelationType[]>([])
+  const [selectedSkills, setSelectedSkills] = useState<SkillRelationType[]>([])
+  const [difficulty, setDifficulty] = useState<Difficulty>('Easy')
+  const [driveGauge, setDriveGauge] = useState<GaugeLevel>(3)
+
+  const addSelectedSkill = (skill: SkillRelationType) => {
+    setSelectedSkills([...selectedSkills, skill])
+  }
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm({ resolver: zodResolver(schema) })
+
+  useEffect(() => {
+    startTransition(async () => {
+      const characters = await getAllCharacters()
+      const character = getSelectedCharacter(characterName, characters)
+      setCharacters(characters)
+      setSelectedCharacter(character)
+      setSkills(await getSkillsByCharacter(character!.id))
+    })
+  }, [])
+
+  useEffect(() => {
+    startTransition(async () => {
+      if (!selectedCharacter?.id) return
+      setSkills(await getSkillsByCharacter(selectedCharacter.id))
+    })
+    setSelectedSkills([])
+  }, [selectedCharacter])
+
+  useEffect(() => {
+    if (ref.current) {
+      ref.current.scrollTop = ref.current.scrollHeight
+    }
+  }, [selectedSkills])
+
+  const deleteSelectedSkill = (index: number) => {
+    const result = selectedSkills.filter((_, i) => i !== index)
+    setSelectedSkills(result)
+  }
+
+  const onSubmit = (data: FieldValues) => {
+    console.log(data)
+  }
+
+  return (
+    <PageLayout>
+      <form onSubmit={handleSubmit(onSubmit)}>
+        <div className="mb-8">
+          <Title title="Character select" />
+          <select
+            className="text-black text-2xl w-72 h-10 px-3"
+            name="characters"
+            id="characters"
+            value={selectedCharacter?.name}
+            onChange={(e) =>
+              setSelectedCharacter(
+                getSelectedCharacter(
+                  e.target.value as CharacterNames,
+                  characters,
+                ),
+              )
+            }
+          >
+            {characters?.map((character) => (
+              <option
+                key={character.id}
+                value={character.name}
+                label={character.name}
+              >
+                {character.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="mb-8">
+          <Title title="Combo Skills" />
+          <div className="sm:flex">
+            <div className="grow h-[500px]">
+              <div className="h-full overflow-y-auto bg-accentEmpty" ref={ref}>
+                {selectedSkills.map((skill, i) => (
+                  <SelectedSkillItem
+                    key={i}
+                    index={i}
+                    skill={skill}
+                    handleDeleteSkill={deleteSelectedSkill}
+                  />
+                ))}
+              </div>
+              {selectedSkills.length >= maxSkillLength && (
+                <span className="text-accentRed">技の追加上限に達しました</span>
+              )}
+            </div>
+            <div>
+              <ul className="h-[500px] overflow-y-auto">
+                {[...groupBySkillCategory(skills).entries()].map(
+                  ([category, skills]) => (
+                    <li key={category}>
+                      <SkillCategoryDropDown
+                        categoryName={category}
+                        skills={skills}
+                        handleClickSkill={addSelectedSkill}
+                        disabled={selectedSkills.length >= maxSkillLength}
+                      />
+                    </li>
+                  ),
+                )}
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div className="mb-8">
+          <Title title="Damage" />
+          <div className="flex flex-col">
+            <input
+              type="number"
+              defaultValue={1}
+              className="text-black text-2xl w-72 h-10 px-3"
+              {...register('damage', { valueAsNumber: true })}
+            />
+            {errors.damage && (
+              <span className="text-accentRed">
+                {errors.damage.message?.toString()}
+              </span>
+            )}
+          </div>
+        </div>
+        <div className="mb-8">
+          <Title title="Hits" />
+          <div className="flex flex-col">
+            <input
+              type="number"
+              defaultValue={1}
+              className="text-black text-2xl w-72 h-10 px-3"
+              {...register('hits', { valueAsNumber: true })}
+            />
+            {errors.hits && (
+              <span className="text-accentRed">
+                {errors.hits.message?.toString()}
+              </span>
+            )}
+          </div>
+        </div>
+        <div className="mb-8">
+          <Title title="difficulty" />
+          <div className="flex items-center">
+            {['Easy', 'Normal', 'Hard', 'Very Hard'].map((level) => (
+              <span key={level} className="mr-2">
+                <Button
+                  label={level}
+                  color={difficulty !== level ? 'empty' : 'green'}
+                  handleClick={() => setDifficulty(level as Difficulty)}
+                />
+              </span>
+            ))}
+          </div>
+        </div>
+        <div className="mb-8">
+          <Title title="Consumption Drive Gauge" />
+          <DriveGauge
+            gauge={driveGauge}
+            editable={true}
+            handleSelectGauge={setDriveGauge}
+          />
+        </div>
+        <div className="flex items-center justify-center my-16">
+          <Button label="Create" type="submit" handleClick={() => {}} />
+        </div>
+      </form>
+    </PageLayout>
+  )
+}
+
+export default CreateCombo

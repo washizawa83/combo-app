@@ -1,13 +1,27 @@
+'use client'
+
+import { Button } from '@/app/components/forms/Button'
+import { PageLayout } from '@/app/components/PageLayout'
 import { CharacterNames } from '@/types/util/character'
+import { useParams, useRouter } from 'next/navigation'
 
-type Props = {
-  params: Promise<{ characterName: CharacterNames }>
-}
+const CharacterPage = () => {
+  const router = useRouter()
+  const params = useParams<{ characterName: CharacterNames }>()
+  const characterName = params.characterName
 
-const CharacterPage = async ({ params }: Props) => {
-  const characterName = (await params).characterName
+  const gotoCreateComboPage = () => {
+    router.push(`/pages/create-combo?characterName=${characterName}`)
+  }
 
-  return <p>{characterName}</p>
+  return (
+    <PageLayout>
+      <div>
+        <h1>{characterName}</h1>
+        <Button label="Add Combo" handleClick={gotoCreateComboPage} />
+      </div>
+    </PageLayout>
+  )
 }
 
 export default CharacterPage
