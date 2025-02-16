@@ -124,6 +124,7 @@ const CreateCombo = () => {
     const authUser = await getCurrentAuthUser()
     if (!selectedCharacter || !authUser) return
     const user = await getUser(authUser.id)
+    if (!user) return
 
     const comboData: CreateComboSchema = {
       id: uuidv4(),
@@ -136,7 +137,7 @@ const CreateCombo = () => {
       remark: data.remark,
       userId: user.id,
     }
-    console.log(comboData)
+    console.log(comboData.id)
     const createdCombo = await createCombo(comboData)
     await createSkillsOnCombos(selectedSkills, createdCombo)
   }
