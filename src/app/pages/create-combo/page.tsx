@@ -7,6 +7,7 @@ import {
 import { SelectedSkillItem } from '@/app/components/feature/create-combo/SelectedSkillItem'
 import { SkillCategoryDropDown } from '@/app/components/feature/create-combo/SkillCategoryDropDown'
 import { Button } from '@/app/components/forms/Button'
+import { InputForm } from '@/app/components/forms/InputForm'
 import { PageLayout } from '@/app/components/PageLayout'
 import { Title } from '@/app/components/ui/Title'
 import { getCurrentAuthUser, getUser } from '@/app/service/auth'
@@ -34,6 +35,15 @@ type Difficulty = 'Easy' | 'Normal' | 'Hard' | 'Very Hard'
 
 const maxSkillLength = 50
 
+enum skillCategoryPriority {
+  '通常技',
+  '特殊技',
+  '必殺技',
+  'スーパーアーツ',
+  '通常投げ',
+  '共通システム',
+}
+
 const getSelectedCharacter = (
   selectedCharacterName: CharacterNames,
   characters?: Character[] | null,
@@ -45,9 +55,15 @@ const getSelectedCharacter = (
 }
 
 const groupBySkillCategory = (skills: SkillRelationType[]) => {
-  return Map.groupBy<SkillCategories, SkillRelationType>(
+  const groupSkill = Map.groupBy<SkillCategories, SkillRelationType>(
     skills,
     (skill) => skill.skillCategory.name as SkillCategories,
+  )
+  return new Map(
+    [...groupSkill].sort(
+      ([categoryA], [categoryB]) =>
+        skillCategoryPriority[categoryA] - skillCategoryPriority[categoryB],
+    ),
   )
 }
 
@@ -174,19 +190,13 @@ const CreateCombo = () => {
         </div>
         <div className="mb-8">
           <Title title="Combo Name" />
-          <div className="flex flex-col">
-            <input
-              type="text"
-              placeholder="画面端限定コンボ"
-              className="text-black text-2xl w-full h-10 pl-2"
-              {...register('comboName')}
-            />
-            {errors.comboName && (
-              <span className="text-accentRed">
-                {errors.comboName.message?.toString()}
-              </span>
-            )}
-          </div>
+          <InputForm
+            type="text"
+            placeholder="画面端限定コンボ"
+            registerName="comboName"
+            register={register}
+            errors={errors}
+          />
         </div>
         <div className="mb-8">
           <Title title="Combo Skills" />
@@ -224,37 +234,25 @@ const CreateCombo = () => {
             </div>
           </div>
         </div>
-        <div className="mb-8">
+        <div className="mb-8 w-72">
           <Title title="Damage" />
-          <div className="flex flex-col">
-            <input
-              type="number"
-              placeholder="5000"
-              className="text-black text-2xl w-72 h-10 pl-2"
-              {...register('damage', { valueAsNumber: true })}
-            />
-            {errors.damage && (
-              <span className="text-accentRed">
-                {errors.damage.message?.toString()}
-              </span>
-            )}
-          </div>
+          <InputForm
+            type="number"
+            placeholder="5000"
+            registerName="damage"
+            register={register}
+            errors={errors}
+          />
         </div>
-        <div className="mb-8">
+        <div className="mb-8 w-72">
           <Title title="Hits" />
-          <div className="flex flex-col">
-            <input
-              type="number"
-              placeholder="10"
-              className="text-black text-2xl w-72 h-10 pl-2"
-              {...register('hits', { valueAsNumber: true })}
-            />
-            {errors.hits && (
-              <span className="text-accentRed">
-                {errors.hits.message?.toString()}
-              </span>
-            )}
-          </div>
+          <InputForm
+            type="number"
+            placeholder="10"
+            registerName="hits"
+            register={register}
+            errors={errors}
+          />
         </div>
         <div className="mb-8">
           <Title title="difficulty" />
