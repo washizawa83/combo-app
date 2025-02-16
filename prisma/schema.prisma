@@ -13,16 +13,22 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+generator zod {
+  provider = "zod-prisma-types"
+}
+
 model User {
-  id     String @id @default(dbgenerated("uuid_generate_v4()"))
-  authId String @unique
+  id     String  @id @default(dbgenerated("uuid_generate_v4()"))
+  authId String  @unique
   name   String
+  combo  Combo[]
 }
 
 model Character {
   id     Int     @id @default(autoincrement())
   name   String
   skills Skill[]
+  combo  Combo[]
 }
 
 model Skill {
@@ -47,6 +53,7 @@ model Skill {
   skillCategoryId              Int
   cancelCategory               String?
   commands                     CommandsOnSkills[]
+  SkillsOnCombos               SkillsOnCombos[]
 }
 
 model SkillCategory {
@@ -69,4 +76,30 @@ model CommandsOnSkills {
   order     Int
 
   @@id([skillId, commandId, order])
+}
+
+model Combo {
+  id                    String    @id @default(dbgenerated("uuid_generate_v4()"))
+  name                  String
+  damage                Int
+  hits                  Int
+  difficulty            String
+  consumptionDriveGauge Int
+  remark                String?
+  character             Character @relation(fields: [characterId], references: [id])
+  characterId           Int
+
+  SkillsOnCombos SkillsOnCombos[]
+  user           User             @relation(fields: [userId], references: [id])
+  userId         String
+}
+
+model SkillsOnCombos {
+  combo   Combo  @relation(fields: [comboId], references: [id])
+  comboId String
+  skill   Skill  @relation(fields: [skillId], references: [id])
+  skillId String
+  order   Int
+
+  @@id([comboId, skillId])
 }

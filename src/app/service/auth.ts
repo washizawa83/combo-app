@@ -1,6 +1,6 @@
 'use server'
 
-import { PrismaClient } from "@prisma/client/extension"
+import { PrismaClient } from "@prisma/client"
 import { createClient } from "../utils/supabase/server"
 import { redirect } from 'next/navigation'
 
@@ -12,14 +12,11 @@ export const getCurrentAuthUser = async () => {
   return user
 }
 
-export const createUser = async () => {
-    const prisma = new PrismaClient()
-    const newUser = await prisma.user.create({
-        data: {
-            name: 'test'
-        }
-    })
-    return newUser
+export const getUser = async (authId: string) => {
+  const prisma = new PrismaClient()
+  return await prisma.user.findFirst({
+    where: {authId: authId}
+  })
 }
 
 export const login = async (provider: 'google') => {
